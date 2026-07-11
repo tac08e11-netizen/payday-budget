@@ -229,6 +229,35 @@
         .streak-bar { background:var(--bg-card);border-radius:10px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;font-size:0.8rem; }
         .streak-bar .fire { font-size:1.2rem; }
         .streak-bar .streak-num { color:var(--accent);font-weight:700; }
+
+        /* Settings */
+        .settings-section { margin-bottom:16px; }
+        .settings-section h3 { color:var(--text-muted);font-size:0.75rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px; }
+        .cat-edit-item { background:var(--bg-card);border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px; }
+        .cat-edit-item .cei-color { width:12px;height:12px;border-radius:50%;flex-shrink:0; }
+        .cat-edit-item .cei-info { flex:1; }
+        .cat-edit-item .cei-name { font-size:0.85rem;font-weight:500; }
+        .cat-edit-item .cei-type { font-size:0.65rem;color:var(--text-dim);text-transform:uppercase; }
+        .cat-edit-item .cei-pct { width:60px;padding:6px 8px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;text-align:center;outline:none; }
+        .cat-edit-item .cei-pct:focus { border-color:var(--accent); }
+        .cat-edit-item .cei-del { background:none;border:none;color:var(--danger);font-size:1.1rem;cursor:pointer;padding:4px 8px; }
+        .cat-edit-item .cei-del:active { transform:scale(0.8); }
+        .pct-total { text-align:center;font-size:0.85rem;padding:10px;border-radius:10px;margin-bottom:12px; }
+        .pct-total.ok { background:rgba(0,212,170,0.1);color:var(--accent); }
+        .pct-total.bad { background:rgba(231,76,60,0.1);color:var(--danger); }
+        .btn-add-cat { width:100%;padding:12px;background:var(--bg-card);border:2px dashed var(--border);border-radius:12px;color:var(--text-muted);font-size:0.85rem;cursor:pointer;margin-bottom:12px; }
+        .btn-add-cat:active { border-color:var(--accent);color:var(--accent); }
+        .btn-save-cats { width:100%;padding:12px;background:var(--accent);color:var(--bg-primary);border:none;border-radius:12px;font-size:0.95rem;font-weight:700;cursor:pointer; }
+        .btn-save-cats:active { transform:scale(0.97); }
+        .btn-save-cats:disabled { opacity:0.5;cursor:not-allowed; }
+        .add-cat-form { background:var(--bg-card);border-radius:14px;padding:16px;margin-bottom:12px; }
+        .add-cat-form h4 { color:var(--accent);font-size:0.9rem;margin-bottom:12px; }
+        .acf-row { display:flex;gap:8px;margin-bottom:8px; }
+        .acf-row input, .acf-row select { flex:1;padding:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;outline:none; }
+        .acf-row input:focus, .acf-row select:focus { border-color:var(--accent); }
+        .acf-row select { appearance:none; }
+        .acf-buttons { display:flex;gap:8px; }
+        .acf-buttons button { flex:1;padding:10px;border:none;border-radius:8px;font-size:0.85rem;font-weight:600;cursor:pointer; }
     </style>
 </head>
 <body>
@@ -243,6 +272,7 @@
         <button class="nav-item active" data-tab="home" onclick="switchTab('home')"><span class="nav-icon">🏠</span>Home</button>
         <button class="nav-item" data-tab="budget" onclick="switchTab('budget')"><span class="nav-icon">💳</span>Budget</button>
         <button class="nav-item" data-tab="history" onclick="switchTab('history')"><span class="nav-icon">📋</span>History</button>
+        <button class="nav-item" data-tab="settings" onclick="switchTab('settings')"><span class="nav-icon">⚙️</span>Settings</button>
     </nav>
     <input type="file" id="csvFileInput" class="import-hidden" accept=".csv" onchange="handleCSVFile(event)">
     <div class="modal-overlay" id="spendModal"><div class="modal">
@@ -264,7 +294,7 @@
         <div class="modal-buttons"><button class="btn-cancel" onclick="closeThemeModal()">Close</button></div>
     </div></div>
     <script>
-        const CATEGORIES=[
+        const DEFAULT_CATEGORIES=[
             {id:'rent',name:'🏠 Rent Fund',pct:0.19,type:'protected',quickAdds:[],color:'#3498db'},
             {id:'car',name:'🚗 Car & Gas',pct:0.09,type:'protected',quickAdds:['$20 Gas','$60 Fill Up'],color:'#1abc9c'},
             {id:'food',name:'🍔 Food',pct:0.24,type:'flexible',quickAdds:['$6 Dutch Bros','$15 Combo','$25 McDs','$2.40 Vending'],color:'#f39c12'},
@@ -273,7 +303,10 @@
             {id:'gaming',name:'🎮 Gaming',pct:0.18,type:'fun',quickAdds:['$20 Star Citizen','$10 Mobile','$50 Cards'],color:'#e74c3c'},
             {id:'free',name:'🎯 Free',pct:0.14,type:'fun',quickAdds:['$10','$20','$50'],color:'#e67e22'},
         ];
-        const FUN_IDS=['gaming','free'];
+        let CATEGORIES=loadCategories();
+        function loadCategories(){const s=localStorage.getItem('payday_cats');return s?JSON.parse(s):JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));}
+        function saveCategories(){localStorage.setItem('payday_cats',JSON.stringify(CATEGORIES));}
+        const FUN_IDS_FUNC=()=>CATEGORIES.filter(c=>c.type==='fun').map(c=>c.id);
         let currentTab='home',historyFilter='all',csvPreviewData=null;
         let state=loadState();
         function loadState(){const s=localStorage.getItem('payday_v3');return s?JSON.parse(s):{active:false,paycheck:0,allocations:{},spent:{},history:[],streak:0,lastCleanDay:null,periodHistory:[],rollover:0,totalSaved:0,goal:500};}
@@ -319,7 +352,7 @@
             const ro=state.rollover||0;
             state.active=true;state.paycheck=amount;state.allocations={};state.spent={};state.history=[];state.rollover=0;
             CATEGORIES.forEach(c=>{state.allocations[c.id]=Math.round(amount*c.pct*100)/100;state.spent[c.id]=0;});
-            if(ro>0){const tp=FUN_IDS.reduce((s,id)=>s+CATEGORIES.find(c=>c.id===id).pct,0);FUN_IDS.forEach(id=>{state.allocations[id]+=Math.round((CATEGORIES.find(c=>c.id===id).pct/tp)*ro*100)/100;});}
+            if(ro>0){const tp=FUN_IDS_FUNC().reduce((s,id)=>s+CATEGORIES.find(c=>c.id===id).pct,0);FUN_IDS_FUNC().forEach(id=>{state.allocations[id]+=Math.round((CATEGORIES.find(c=>c.id===id).pct/tp)*ro*100)/100;});}
             saveState();render();
         }
         function savePeriodHistory(){
@@ -327,7 +360,7 @@
             const lo=Math.round((state.paycheck-ts)*100)/100;
             state.periodHistory.unshift({paycheck:state.paycheck,spent:Math.round(ts*100)/100,leftover:lo,date:new Date().toLocaleDateString()});
             if(state.periodHistory.length>20)state.periodHistory.pop();
-            let ro=0;FUN_IDS.forEach(id=>{const r=getAdjustedRemaining(id);if(r>0)ro+=r;});
+            let ro=0;FUN_IDS_FUNC().forEach(id=>{const r=getAdjustedRemaining(id);if(r>0)ro+=r;});
             state.rollover=Math.round(ro*100)/100;
             // Track savings goal
             const savedThisPeriod=state.spent['savings']||0;
@@ -337,7 +370,7 @@
         function getTotalOverage(){let o=0;CATEGORIES.forEach(c=>{if(c.type==='flexible'){const r=getRemaining(c.id);if(r<0)o+=Math.abs(r);}});return o;}
         function getAdjustedRemaining(id){
             const cat=CATEGORIES.find(c=>c.id===id);let rem=getRemaining(id);
-            if(cat.type==='fun'){const ov=getTotalOverage();if(ov>0){const t=FUN_IDS.reduce((s,i)=>s+state.allocations[i],0);rem-=Math.round(ov*(state.allocations[id]/t)*100)/100;}}
+            if(cat.type==='fun'){const ov=getTotalOverage();if(ov>0){const t=FUN_IDS_FUNC().reduce((s,i)=>s+state.allocations[i],0);rem-=Math.round(ov*(state.allocations[id]/t)*100)/100;}}
             return Math.round(rem*100)/100;
         }
         function getDailyTotal(){const t=new Date().toDateString();return state.history.filter(h=>new Date(h.time).toDateString()===t).reduce((s,h)=>s+h.amount,0);}
@@ -387,7 +420,7 @@
             const warn=document.getElementById('spendWarning');
             if(wouldBeOver&&!warn.classList.contains('confirmed')){
                 const ov=Math.abs(rem-amt).toFixed(2);
-                if(cat.type==='flexible'){const t=FUN_IDS.reduce((s,id)=>s+state.allocations[id],0);
+                if(cat.type==='flexible'){const t=FUN_IDS_FUNC().reduce((s,id)=>s+state.allocations[id],0);
                     warn.textContent=`⚠️ $${ov} over! Pulls from fun categories. Tap again to confirm.`;
                 }else{warn.textContent=`⚠️ $${ov} over in ${cat.name}. Tap again to confirm.`;}
                 warn.classList.add('show','confirmed');return;
@@ -658,6 +691,89 @@
         }
         function setFilter(f){historyFilter=f;render();}
 
+        // === RENDER: SETTINGS TAB ===
+        let showAddForm=false;
+        function renderSettings(){
+            let h='<div class="settings-section"><h3>Manage Categories</h3>';
+            // Total percentage check
+            const totalPct=Math.round(CATEGORIES.reduce((s,c)=>s+c.pct,0)*100);
+            const pctOk=totalPct===100;
+            h+=`<div class="pct-total ${pctOk?'ok':'bad'}">Total: ${totalPct}% ${pctOk?'✓':'(must equal 100%)'}</div>`;
+            // Category list
+            CATEGORIES.forEach((cat,idx)=>{
+                h+=`<div class="cat-edit-item">
+                    <div class="cei-color" style="background:${cat.color}"></div>
+                    <div class="cei-info"><div class="cei-name">${cat.name}</div><div class="cei-type">${cat.type}</div></div>
+                    <input type="number" class="cei-pct" value="${Math.round(cat.pct*100)}" min="1" max="99" onchange="updateCatPct(${idx},this.value)">
+                    <span style="color:var(--text-dim);font-size:0.8rem">%</span>
+                    <button class="cei-del" onclick="deleteCat(${idx})">🗑</button>
+                </div>`;
+            });
+            // Add button
+            if(!showAddForm){
+                h+=`<button class="btn-add-cat" onclick="showAddForm=true;render()">+ Add Category</button>`;
+            }else{
+                h+=`<div class="add-cat-form"><h4>New Category</h4>
+                    <div class="acf-row"><input type="text" id="newCatName" placeholder="Name (e.g. Gym)"><input type="text" id="newCatEmoji" placeholder="Emoji" style="width:60px;flex:none;"></div>
+                    <div class="acf-row"><input type="number" id="newCatPct" placeholder="%" min="1" max="50" style="width:70px;flex:none;">
+                    <select id="newCatType"><option value="protected">Protected</option><option value="flexible">Flexible</option><option value="fun">Fun</option></select></div>
+                    <div class="acf-buttons"><button class="btn-cancel" onclick="showAddForm=false;render()">Cancel</button><button class="btn-confirm" onclick="addNewCat()">Add</button></div>
+                </div>`;
+            }
+            // Save & normalize button
+            h+=`<button class="btn-save-cats" onclick="normalizeCats()" ${pctOk?'':''}>${pctOk?'✓ Categories Saved':'Auto-Fix to 100%'}</button>`;
+            h+='</div>';
+            // Goal setting
+            h+=`<div class="settings-section"><h3>Savings Goal</h3>
+                <div class="cat-edit-item"><div class="cei-info"><div class="cei-name">💰 Target Amount</div></div>
+                <input type="number" class="cei-pct" style="width:80px" value="${state.goal||500}" onchange="updateGoal(this.value)"><span style="color:var(--text-dim);font-size:0.8rem">$</span></div></div>`;
+            // Reset all data
+            h+=`<div class="settings-section"><h3>Data</h3>
+                <button class="btn-add-cat" onclick="resetAllData()" style="color:var(--danger);border-color:var(--danger)">⚠️ Reset All Data</button></div>`;
+            return h;
+        }
+
+        function updateCatPct(idx,val){
+            const v=parseInt(val);if(isNaN(v)||v<1)return;
+            CATEGORIES[idx].pct=v/100;
+            saveCategories();render();
+        }
+
+        function deleteCat(idx){
+            if(CATEGORIES.length<=2){alert("Need at least 2 categories.");return;}
+            if(!confirm(`Delete "${CATEGORIES[idx].name}"?`))return;
+            CATEGORIES.splice(idx,1);
+            saveCategories();render();
+        }
+
+        function addNewCat(){
+            const name=document.getElementById('newCatName').value.trim();
+            const emoji=document.getElementById('newCatEmoji').value.trim()||'📌';
+            const pct=parseInt(document.getElementById('newCatPct').value);
+            const type=document.getElementById('newCatType').value;
+            if(!name||!pct||pct<1)return alert('Fill in name and percentage.');
+            const id=name.toLowerCase().replace(/[^a-z0-9]/g,'')+'_'+Date.now();
+            const colors=['#e74c3c','#3498db','#2ecc71','#f39c12','#9b59b6','#1abc9c','#e67e22','#fd79a8','#636e72'];
+            const color=colors[CATEGORIES.length%colors.length];
+            CATEGORIES.push({id,name:`${emoji} ${name}`,pct:pct/100,type,quickAdds:[],color});
+            showAddForm=false;
+            saveCategories();render();
+        }
+
+        function normalizeCats(){
+            const total=CATEGORIES.reduce((s,c)=>s+c.pct,0);
+            if(total===0)return;
+            CATEGORIES.forEach(c=>{c.pct=Math.round((c.pct/total)*100)/100;});
+            // Fix rounding to exactly 100%
+            const diff=1-CATEGORIES.reduce((s,c)=>s+c.pct,0);
+            if(diff!==0)CATEGORIES[CATEGORIES.length-1].pct+=diff;
+            saveCategories();render();
+        }
+
+        function updateGoal(val){state.goal=parseInt(val)||500;saveState();}
+        function resetAllData(){if(!confirm('Delete ALL data? This cannot be undone.'))return;localStorage.removeItem('payday_v3');localStorage.removeItem('payday_cats');location.reload();}
+
+
         function renderPeriodHistory(){
             if(!state.periodHistory||state.periodHistory.length===0)return '';
             let h='<div class="section-title" style="margin-top:20px">Past Periods</div>';
@@ -672,6 +788,7 @@
             if(currentTab==='home')app.innerHTML=renderHome();
             else if(currentTab==='budget')app.innerHTML=renderBudget();
             else if(currentTab==='history')app.innerHTML=renderHistory();
+            else if(currentTab==='settings')app.innerHTML=renderSettings();
             // Show/hide FAB
             document.getElementById('fabBtn').style.display=state.active?'flex':'none';
             setTimeout(()=>{const inp=document.getElementById('paycheckInput');if(inp)inp.addEventListener('keypress',e=>{if(e.key==='Enter')handleAllocate();});},50);
